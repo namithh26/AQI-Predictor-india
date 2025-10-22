@@ -1,37 +1,43 @@
 import gradio as gr
-import pickle
+import joblib
 import numpy as np
 
-# Load your trained model
-with open("aqi_model.pkl", "rb") as f:
-    model = pickle.load(f)
+# Load the model safely with joblib instead of pickle
+model = joblib.load("aqi_model.pkl")
+
+# AQI categories
+categories = {
+    0: "Good",
+    1: "Satisfactory",
+    2: "Moderately Polluted",
+    3: "Poor",
+    4: "Very Poor",
+    5: "Severe"
+}
 
 # Prediction function
-def predict_aqi(pm25, pm10, no2, nh3, so2, co, o3):
-    features = np.array([[pm25, pm10, no2, nh3, so2, co, o3]])
-    prediction = model.predict(features)[0]  # adjust if your model uses predict_proba
-    return f"✨ Predicted AQI Category: {prediction}"
+def predict_aqi(city, PM25, PM10, NO2, NH3, SO2, CO, O3):
+    features = np.array([[PM25, PM10, NO2, NH3, SO2, CO, O3]])
+    prediction = model.predict(features)[0]
+    return f"🌆 City: {city}\n✨ Predicted AQI Category: {categories[int(prediction)]}"
 
 # Gradio interface
-with gr.Blocks() as demo:
-    gr.Markdown("## AQI Predictor")
-    
-    with gr.Row():
-        pm25_input = gr.Number(label="PM2.5")
-        pm10_input = gr.Number(label="PM10")
-        no2_input = gr.Number(label="NO₂")
-    
-    with gr.Row():
-        nh3_input = gr.Number(label="NH₃")
-        so2_input = gr.Number(label="SO₂")
-        co_input = gr.Number(label="CO")
-        o3_input = gr.Number(label="O₃")
-    
-    output = gr.Textbox(label="Predicted AQI Category")
-    
-    btn = gr.Button("Predict")
-    btn.click(predict_aqi, 
-              inputs=[pm25_input, pm10_input, no2_input, nh3_input, so2_input, co_input, o3_input], 
-              outputs=output)
+iface = gr.Interface(
+    fn=predict_aqi,
+    inputs=[
+        gr.Textbox(label="City Name", placeholder="Enter city name"),
+        gr.Number(label="PM2.5"),
+        gr.Number(label="PM10"),
+        gr.Number(label="NO2"),
+        gr.Number(label="NH3"),
+        gr.Number(label="SO2"),
+        gr.Number(label="CO"),
+        gr.Number(label="O3"),
+    ],
+    outputs="text",
+    title="🌍 Air Quality Predictor (AQI)",
+    description="Predict the air quality category based on pollutant levels across cities."
+)
 
-demo.launch()
+iface.launch(server_name="0.0.0.0", server_port=7860, ssr_mode=True)
+
